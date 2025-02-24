@@ -28,6 +28,7 @@
 #include "Tokenize.h"
 #include "Util.h"
 #include "World.h"
+#include "WorldSessionMgr.h"
 
 namespace
 {
@@ -168,12 +169,12 @@ void ServerAutoShutdown::Init()
     // Add task for pre shutdown announce
     scheduler.Schedule(Seconds(diffToPreAnnounce), [preAnnounceSeconds](TaskContext /*context*/)
     {
-        std::string preAnnounceMessageFormat = sConfigMgr->GetOption<std::string>("ServerAutoShutdown.PreAnnounce.Message", "[SERVER]: Automated (quick) server restart in %s");
+        std::string preAnnounceMessageFormat = sConfigMgr->GetOption<std::string>("ServerAutoShutdown.PreAnnounce.Message", "[SERVER]: Automated (quick) server restart in {}");
         std::string message = Acore::StringFormat(preAnnounceMessageFormat, Acore::Time::ToTimeString<Seconds>(preAnnounceSeconds, TimeOutput::Seconds, TimeFormat::FullText));
 
         LOG_INFO("module", "> {}", message);
 
-        sWorld->SendServerMessage(SERVER_MSG_STRING, message);
+        sWorldSessionMgr->SendServerMessage(SERVER_MSG_STRING, message);
         sWorld->ShutdownServ(preAnnounceSeconds, SHUTDOWN_MASK_RESTART, SHUTDOWN_EXIT_CODE);
     });
 }
@@ -197,14 +198,12 @@ void ServerAutoShutdown::StartPersistentGameEvents()
     for (auto token : tokens)
     {
         if (token.empty())
-        {
             continue;
-        }
 
         uint32 eventId = *Acore::StringTo<uint32>(token);
         sGameEventMgr->StartEvent(eventId);
 
         GameEventData const& eventData = events[eventId];
-        LOG_INFO("module", "> ServerAutoShutdown: Starting event {} ({}).", eventData.description, eventId);
+        LOG_INFO("module", "> ServerAutoShutdown: Starting event {} ({}).", eventData.Description, eventId);
     }
 }
